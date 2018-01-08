@@ -94,7 +94,30 @@ class BaseTF(object):
             score = self.run_epoch(training, validation, epoch)
             self.config.lr *= self.config.lr_decay # decay learning rate
 
-        # early stopping and saving best parameters
+            # early stopping and saving best parameters
+            if score >= best_score:
+                n_epoch_no_improvement = 0
+                self.save_sess()
+                best_score = score
+                self.logger.info("- new best score!")
+            else:
+                n_epoch_no_improvement += 1
+                if n_epoch_no_improvement >= self.config.n_epoch_no_improvement:
+                    self.logger.info("- early stopping {} epochs without improvement".format(n_epoch_no_improvement))
+                    break
+
+    def evaluate(self, test):
+        """Evaluate model on test set.
+
+        Parameters
+        -----------
+        test:
+            instance of class dataset
+        """
+        self.logger.info("Testing model over test set")
+        metrics = self.run_evaluate(test)
+        msg = " - ".join(["{} {:04.2f}".format(k, v) for k, v in metrics.items()])
+        self.logger.info(msg)
 
     def init_sess(self):
         """Defines self.sess and initializes the variables.
@@ -120,7 +143,7 @@ class BaseTF(object):
         self.sess.close()
 
     def restore_sess(self, dir_model):
-        """Relaod graph and weights into session.
+        """Reload graph and weights into session.
 
         Parameters
         ----------
